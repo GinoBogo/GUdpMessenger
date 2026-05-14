@@ -13,6 +13,7 @@ import tkinter as tk
 import tkinter.filedialog as tkFileDialog
 import tkinter.font as tkfont
 
+from datetime import datetime
 from tkinter import ttk, scrolledtext, messagebox
 
 
@@ -38,118 +39,112 @@ class GUdpMessenger:
             "accent_red": "#f85149",  # Error red
             "accent_yellow": "#e3b341",  # Yellow
             "terminal_green": "#00cc33",
+            # Scrollbar palette
+            "sb_thumb": "#30363d",  # draggable thumb
+            "sb_trough": "#0a0a0f",  # groove (matches bg_dark)
+            "sb_active": "#60666d",  # thumb on hover
         }
 
         # Select best available monospace font
-        self.fonts = self.get_system_fonts()
+        self.fonts = self._get_system_fonts()
 
         # Configure ttk styles
-        self.setup_styles()
+        self._setup_styles()
 
-        # UDP Socket variables
+        # UDP socket state
         self.sock = None
         self.is_listening = False
         self.listen_thread = None
 
-        # Create UI
-        self.create_widgets()
+        # Build UI
+        self._create_widgets()
 
-        # Load configuration
+        # Style scrollbars after widgets exist
+        self._style_scrollbars()
+
+        # Restore saved settings
         self.load_config()
 
-        # Bind close event
+        # Handle window close
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
-    def get_system_fonts(self):
-        """Select best available monospace fonts based on OS"""
+    # ------------------------------------------------------------------
+    # Font detection
+    # ------------------------------------------------------------------
+
+    def _get_system_fonts(self):
+        """Return a dict with font candidates and sizes for the current OS."""
         system = platform.system()
 
         if system == "Linux":
-            # Best Linux monospace fonts in order of preference
-            fonts = {
-                "main": (
-                    "JetBrains Mono",
-                    "Fira Code",
-                    "FiraCode Nerd Font",
-                    "Cascadia Code",
-                    "DejaVu Sans Mono",
-                    "Ubuntu Mono",
-                    "Liberation Mono",
-                    "Noto Mono",
-                    "Courier New",
-                ),
-                "size_normal": 10,
-                "size_small": 9,
-                "size_large": 10,
-            }
-        elif system == "Darwin":  # macOS
-            fonts = {
-                "main": (
-                    "SF Mono",
-                    "Menlo",
-                    "Monaco",
-                    "JetBrains Mono",
-                    "Fira Code",
-                    "Courier New",
-                ),
-                "size_normal": 10,
-                "size_small": 9,
-                "size_large": 10,
-            }
+            candidates = (
+                "JetBrains Mono",
+                "Fira Code",
+                "FiraCode Nerd Font",
+                "Cascadia Code",
+                "DejaVu Sans Mono",
+                "Ubuntu Mono",
+                "Liberation Mono",
+                "Noto Mono",
+                "Courier New",
+            )
+        elif system == "Darwin":
+            candidates = (
+                "SF Mono",
+                "Menlo",
+                "Monaco",
+                "JetBrains Mono",
+                "Fira Code",
+                "Courier New",
+            )
         else:  # Windows and others
-            fonts = {
-                "main": ("Cascadia Code", "Consolas", "Courier New"),
-                "size_normal": 10,
-                "size_small": 9,
-                "size_large": 10,
-            }
+            candidates = ("Cascadia Code", "Consolas", "Courier New")
 
-        # Find first available font
-        available_fonts = tkfont.families()
-        for font in fonts["main"]:
-            if font in available_fonts:
-                fonts["selected"] = font
-                break
-        else:
-            # Ultimate fallback
-            fonts["selected"] = "Courier New"
+        available = tkfont.families()
+        selected = next((f for f in candidates if f in available), "Courier New")
 
-        return fonts
+        return {
+            "selected": selected,
+            "size_normal": 10,
+            "size_small": 9,
+            "size_large": 10,
+        }
 
-    def setup_styles(self):
-        """Configure custom ttk styles for dark industrial look"""
+    # ------------------------------------------------------------------
+    # Style setup
+    # ------------------------------------------------------------------
+
+    def _setup_styles(self):
+        """Configure ttk styles for the dark industrial look."""
         style = ttk.Style()
-
-        # Configure the theme
         style.theme_use("clam")
 
-        # Create font tuples
-        self.main_font = (self.fonts["selected"], self.fonts["size_normal"])
-        self.small_font = (self.fonts["selected"], self.fonts["size_small"])
-        self.large_font = (self.fonts["selected"], self.fonts["size_large"])
-        self.bold_font = (self.fonts["selected"], self.fonts["size_large"], "bold")
+        sel = self.fonts["selected"]
+        self.main_font = (sel, self.fonts["size_normal"])
+        self.small_font = (sel, self.fonts["size_small"])
+        self.large_font = (sel, self.fonts["size_large"])
+        self.bold_font = (sel, self.fonts["size_large"], "bold")
 
-        # Frame styles
-        style.configure("Dark.TFrame", background=self.colors["bg_dark"])
+        c = self.colors
+
+        style.configure("Dark.TFrame", background=c["bg_dark"])
         style.configure(
             "Dark.TLabelframe",
-            background=self.colors["bg_dark"],
-            foreground=self.colors["accent"],
+            background=c["bg_dark"],
+            foreground=c["accent"],
             borderwidth=1,
             relief="solid",
         )
         style.configure(
             "Dark.TLabelframe.Label",
-            background=self.colors["bg_dark"],
-            foreground=self.colors["accent"],
+            background=c["bg_dark"],
+            foreground=c["accent"],
             font=self.bold_font,
         )
-
-        # Button styles
         style.configure(
             "Dark.TButton",
-            background=self.colors["bg_input"],
-            foreground=self.colors["accent"],
+            background=c["bg_input"],
+            foreground=c["accent"],
             borderwidth=1,
             relief="solid",
             font=self.small_font,
@@ -162,307 +157,331 @@ class GUdpMessenger:
             borderwidth=[("active", 1)],
             relief=[("pressed", "sunken")],
         )
-
-        # Label styles
         style.configure(
             "Dark.TLabel",
-            background=self.colors["bg_dark"],
-            foreground=self.colors["text"],
+            background=c["bg_dark"],
+            foreground=c["text"],
             font=self.small_font,
         )
-
-        # Checkbutton styles
         style.configure(
             "Dark.TCheckbutton",
-            background=self.colors["bg_dark"],
-            foreground=self.colors["text_dim"],
+            background=c["bg_dark"],
+            foreground=c["text_dim"],
             font=self.small_font,
         )
         style.map(
             "Dark.TCheckbutton",
-            background=[("active", self.colors["bg_dark"])],
-            foreground=[("active", self.colors["accent"])],
+            background=[("active", c["bg_dark"])],
+            foreground=[("active", c["accent"])],
         )
 
-        # Configure root window
-        self.root.configure(bg=self.colors["bg_dark"])
+        self.root.configure(bg=c["bg_dark"])
 
-    def create_entry(self, parent, width, initial_value=""):
-        """Create a styled tk.Entry with centered text and yellow text color"""
+    # ------------------------------------------------------------------
+    # Widget helpers
+    # ------------------------------------------------------------------
+
+    def _create_entry(self, parent, width, initial_value=""):
+        """Return a styled tk.Entry with centred cyan text."""
+        c = self.colors
         entry = tk.Entry(
             parent,
             width=width,
             justify="center",
             font=self.small_font,
-            bg=self.colors["bg_input"],
-            fg=self.colors["accent_cyan"],
-            insertbackground=self.colors["accent_yellow"],
+            bg=c["bg_input"],
+            fg=c["accent_cyan"],
+            insertbackground=c["accent_yellow"],
             relief="flat",
             borderwidth=1,
             highlightthickness=1,
-            highlightbackground=self.colors["border"],
-            highlightcolor=self.colors["accent"],
+            highlightbackground=c["border"],
+            highlightcolor=c["accent"],
             selectbackground="#3a2a1a",
-            selectforeground=self.colors["accent_yellow"],
+            selectforeground=c["accent_yellow"],
         )
         if initial_value:
             entry.insert(0, initial_value)
         return entry
 
-    def create_widgets(self):
-        # Configure grid weights
+    def _make_scrolled_text(self, parent, height, fg_color):
+        """Return a styled ScrolledText widget."""
+        c = self.colors
+        widget = scrolledtext.ScrolledText(
+            parent,
+            height=height,
+            wrap=tk.WORD,
+            font=self.main_font,
+            bg=c["bg_input"],
+            fg=fg_color,
+            insertbackground=fg_color,
+            relief="flat",
+            borderwidth=1,
+            highlightthickness=0,
+        )
+        return widget
+
+    def _style_scrollbars(self):
+        """Apply near-black colours to every ScrolledText vertical scrollbar."""
+        c = self.colors
+        sb_cfg = dict(
+            bg=c["sb_thumb"],
+            troughcolor=c["sb_trough"],
+            activebackground=c["sb_active"],
+            relief="flat",
+            bd="0",
+            width="10",
+        )
+        for widget in (self.send_text, self.recv_text, self.sys_log):
+            widget.vbar.config(**sb_cfg)
+
+    # ------------------------------------------------------------------
+    # UI construction
+    # ------------------------------------------------------------------
+
+    def _create_widgets(self):
         self.root.grid_rowconfigure(2, weight=1)
         self.root.grid_rowconfigure(3, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_columnconfigure(1, weight=1)
 
-        # Connection Settings Frame
-        settings_frame = ttk.LabelFrame(
+        self._create_settings_frame()
+        self._create_control_bar()
+        self._create_transmit_frame()
+        self._create_receive_frame()
+        self._create_log_frame()
+        self._apply_hand_cursor()
+
+    def _create_settings_frame(self):
+        c = self.colors
+        frame = ttk.LabelFrame(
             self.root,
             text="[ CONNECTION SETTINGS ]",
             padding="10",
             style="Dark.TLabelframe",
         )
-        settings_frame.grid(
-            row=0, column=0, columnspan=2, padx=10, pady=(10, 5), sticky="ew"
-        )
+        frame.grid(row=0, column=0, columnspan=2, padx=10, pady=(10, 5), sticky="ew")
 
-        # Local settings
-        ttk.Label(settings_frame, text="Local IP:", style="Dark.TLabel").grid(
+        # Local IP
+        ttk.Label(frame, text="Local IP:", style="Dark.TLabel").grid(
             row=0, column=0, sticky="w", padx=(0, 5)
         )
-        self.local_ip = self.create_entry(
-            settings_frame, width=16, initial_value="0.0.0.0"
-        )
+        self.local_ip = self._create_entry(frame, width=16, initial_value="0.0.0.0")
         self.local_ip.grid(row=0, column=1, padx=(0, 10))
 
-        ttk.Label(settings_frame, text="Local Port:", style="Dark.TLabel").grid(
+        # Local Port
+        ttk.Label(frame, text="Local Port:", style="Dark.TLabel").grid(
             row=0, column=2, sticky="w", padx=(0, 5)
         )
-        self.local_port = self.create_entry(
-            settings_frame, width=9, initial_value="8888"
-        )
+        self.local_port = self._create_entry(frame, width=9, initial_value="8888")
         self.local_port.grid(row=0, column=3, padx=(0, 20))
 
-        # Remote settings
-        ttk.Label(settings_frame, text="Remote IP:", style="Dark.TLabel").grid(
+        # Remote IP
+        ttk.Label(frame, text="Remote IP:", style="Dark.TLabel").grid(
             row=0, column=4, sticky="w", padx=(0, 5)
         )
-        self.remote_ip = self.create_entry(
-            settings_frame, width=16, initial_value="127.0.0.1"
-        )
+        self.remote_ip = self._create_entry(frame, width=16, initial_value="127.0.0.1")
         self.remote_ip.grid(row=0, column=5, padx=(0, 10))
 
-        ttk.Label(settings_frame, text="Remote Port:", style="Dark.TLabel").grid(
+        # Remote Port
+        ttk.Label(frame, text="Remote Port:", style="Dark.TLabel").grid(
             row=0, column=6, sticky="w", padx=(0, 5)
         )
-        self.remote_port = self.create_entry(
-            settings_frame, width=9, initial_value="9999"
-        )
-        self.remote_port.grid(row=0, column=7, padx=(0, 0))
+        self.remote_port = self._create_entry(frame, width=9, initial_value="9999")
+        self.remote_port.grid(row=0, column=7)
 
-        # Control buttons
-        control_frame = ttk.Frame(self.root, style="Dark.TFrame")
-        control_frame.grid(row=1, column=0, columnspan=2, padx=10, pady=5, sticky="ew")
+    def _create_control_bar(self):
+        c = self.colors
+        bar = ttk.Frame(self.root, style="Dark.TFrame")
+        bar.grid(row=1, column=0, columnspan=2, padx=10, pady=5, sticky="ew")
 
-        # Standard button width for primary buttons
-        button_width = 13
+        w = 13  # primary button width
 
         self.bind_button = ttk.Button(
-            control_frame,
+            bar,
             text="[ START ]",
             command=self.toggle_listening,
-            width=button_width,
+            width=w,
             style="Dark.TButton",
         )
         self.bind_button.pack(side=tk.LEFT, padx=(0, 5))
 
         ttk.Button(
-            control_frame,
+            bar,
             text="[ CLEAR TX ]",
             command=self.clear_send,
-            width=button_width,
+            width=w,
             style="Dark.TButton",
         ).pack(side=tk.LEFT, padx=(0, 5))
 
         ttk.Button(
-            control_frame,
+            bar,
             text="[ CLEAR RX ]",
             command=self.clear_received,
-            width=button_width,
+            width=w,
             style="Dark.TButton",
         ).pack(side=tk.LEFT, padx=(0, 5))
 
         ttk.Button(
-            control_frame,
+            bar,
             text="[ CLEAR LOG ]",
             command=self.clear_sys_log,
-            width=button_width,
+            width=w,
             style="Dark.TButton",
         ).pack(side=tk.LEFT, padx=(0, 5))
 
-        # Custom status label with tk.Label for more styling options
         self.status_label = tk.Label(
-            control_frame,
+            bar,
             text="● DISCONNECTED",
-            fg=self.colors["accent_red"],
-            bg=self.colors["bg_dark"],
+            fg=c["accent_red"],
+            bg=c["bg_dark"],
             font=self.bold_font,
         )
         self.status_label.pack(side=tk.RIGHT)
 
-        # Send Frame
-        send_frame = ttk.LabelFrame(
+    def _create_transmit_frame(self):
+        c = self.colors
+        frame = ttk.LabelFrame(
             self.root, text="[ TRANSMIT ]", padding="10", style="Dark.TLabelframe"
         )
-        send_frame.grid(row=2, column=0, padx=(10, 5), pady=5, sticky="nsew")
-        send_frame.grid_columnconfigure(0, weight=1)
-        send_frame.grid_rowconfigure(0, weight=1)
+        frame.grid(row=2, column=0, padx=(10, 5), pady=5, sticky="nsew")
+        frame.grid_columnconfigure(0, weight=1)
+        frame.grid_rowconfigure(0, weight=1)
 
-        # Send text box
-        self.send_text = scrolledtext.ScrolledText(
-            send_frame,
-            height=8,
-            wrap=tk.WORD,
-            font=self.main_font,
-            bg=self.colors["bg_input"],
-            fg=self.colors["accent"],
-            insertbackground=self.colors["accent"],
+        self.send_text = self._make_scrolled_text(frame, height=8, fg_color=c["accent"])
+        self.send_text.config(
             selectbackground="#1a3a2a",
-            selectforeground=self.colors["accent"],
-            relief="flat",
-            borderwidth=1,
-            highlightthickness=0,
+            selectforeground=c["accent"],
         )
         self.send_text.grid(row=0, column=0, sticky="nsew", pady=(0, 5))
 
-        # Create the context menu
+        # Context menu (right-click)
         self.file_menu = tk.Menu(self.root, tearoff=0)
         self.file_menu.add_command(label="Open File", command=self.load_task_file)
         self.file_menu.add_command(label="Save File", command=self.save_task_file)
-
-        # Bind the context menu to the send_text widget
-        self.send_text.bind("<Button-3>", self.show_context_menu)
-
-        # Bind the context menu to the ESCAPE click
+        self.send_text.bind("<Button-3>", self._show_context_menu)
         self.send_text.bind("<Escape>", self.file_menu.grab_release())
 
-        # Send button frame
-        send_btn_frame = ttk.Frame(send_frame, style="Dark.TFrame")
-        send_btn_frame.grid(row=1, column=0, sticky="ew")
+        # Button row
+        btn_frame = ttk.Frame(frame, style="Dark.TFrame")
+        btn_frame.grid(row=1, column=0, sticky="ew")
 
-        # Standard button width for secondary buttons
-        button_width = 12
+        w = 12  # secondary button width
 
         ttk.Button(
-            send_btn_frame,
+            btn_frame,
             text="[ SEND ]",
             command=self.send_data,
-            width=button_width,
+            width=w,
             style="Dark.TButton",
         ).pack(side=tk.LEFT, padx=(0, 5))
 
         ttk.Button(
-            send_btn_frame,
+            btn_frame,
             text="[ CR ]",
             command=lambda: self.send_special("\r"),
-            width=button_width,
+            width=w,
             style="Dark.TButton",
         ).pack(side=tk.LEFT, padx=(0, 5))
 
         ttk.Button(
-            send_btn_frame,
+            btn_frame,
             text="[ LF ]",
             command=lambda: self.send_special("\n"),
-            width=button_width,
+            width=w,
             style="Dark.TButton",
         ).pack(side=tk.LEFT, padx=(0, 5))
 
         ttk.Button(
-            send_btn_frame,
+            btn_frame,
             text="[ CR+LF ]",
             command=lambda: self.send_special("\r\n"),
-            width=button_width,
+            width=w,
             style="Dark.TButton",
         ).pack(side=tk.LEFT)
 
-        # Received Frame
-        recv_frame = ttk.LabelFrame(
+    def _create_receive_frame(self):
+        c = self.colors
+        frame = ttk.LabelFrame(
             self.root, text="[ RECEIVE ]", padding="10", style="Dark.TLabelframe"
         )
-        recv_frame.grid(row=2, column=1, padx=(5, 10), pady=5, sticky="nsew")
-        recv_frame.grid_columnconfigure(0, weight=1)
-        recv_frame.grid_rowconfigure(0, weight=1)
+        frame.grid(row=2, column=1, padx=(5, 10), pady=5, sticky="nsew")
+        frame.grid_columnconfigure(0, weight=1)
+        frame.grid_rowconfigure(0, weight=1)
 
-        # Receive text box (read-only)
-        self.recv_text = scrolledtext.ScrolledText(
-            recv_frame,
-            height=8,
-            wrap=tk.WORD,
-            font=self.main_font,
-            bg=self.colors["bg_input"],
-            fg=self.colors["accent_cyan"],
-            insertbackground=self.colors["accent_cyan"],
+        self.recv_text = self._make_scrolled_text(
+            frame, height=8, fg_color=c["accent_cyan"]
+        )
+        self.recv_text.config(
             selectbackground="#1a2a3a",
-            selectforeground=self.colors["accent_cyan"],
-            relief="flat",
-            borderwidth=1,
-            highlightthickness=0,
+            selectforeground=c["accent_cyan"],
         )
         self.recv_text.grid(row=0, column=0, sticky="nsew", pady=(0, 5))
 
-        # Display format checkbox
-        format_frame = ttk.Frame(recv_frame, style="Dark.TFrame")
-        format_frame.grid(row=1, column=0, sticky="ew")
+        fmt_frame = ttk.Frame(frame, style="Dark.TFrame")
+        fmt_frame.grid(row=1, column=0, sticky="ew")
 
         self.show_ascii = tk.BooleanVar(value=False)
         ttk.Checkbutton(
-            format_frame,
+            fmt_frame,
             text="Show ASCII",
             variable=self.show_ascii,
             style="Dark.TCheckbutton",
         ).pack(side=tk.LEFT)
 
-        # System Log Frame
-        log_frame = ttk.LabelFrame(
+    def _create_log_frame(self):
+        c = self.colors
+        frame = ttk.LabelFrame(
             self.root, text="[ SYSTEM LOG ]", padding="10", style="Dark.TLabelframe"
         )
-        log_frame.grid(
-            row=3, column=0, columnspan=2, padx=10, pady=(5, 10), sticky="nsew"
-        )
-        log_frame.grid_columnconfigure(0, weight=1)
-        log_frame.grid_rowconfigure(0, weight=1)
+        frame.grid(row=3, column=0, columnspan=2, padx=10, pady=(5, 10), sticky="nsew")
+        frame.grid_columnconfigure(0, weight=1)
+        frame.grid_rowconfigure(0, weight=1)
 
-        self.sys_log = scrolledtext.ScrolledText(
-            log_frame,
-            height=4,
-            wrap=tk.WORD,
-            font=self.small_font,
-            bg=self.colors["bg_input"],
-            fg=self.colors["text_dim"],
-            insertbackground=self.colors["text_dim"],
+        self.sys_log = self._make_scrolled_text(frame, height=4, fg_color=c["text_dim"])
+        self.sys_log.config(
             selectbackground="#1a2a2a",
-            selectforeground=self.colors["text"],
-            relief="flat",
-            borderwidth=1,
-            highlightthickness=0,
+            selectforeground=c["text"],
         )
         self.sys_log.grid(row=0, column=0, sticky="nsew")
 
-        # Log font info
         self.log(f"Using font: {self.fonts['selected']}")
 
-        # Apply hand cursor to all buttons
-        self.apply_hand_cursor_to_buttons()
+    # ------------------------------------------------------------------
+    # Context menu
+    # ------------------------------------------------------------------
 
-    def show_context_menu(self, event):
-        """Show the context menu at the cursor position"""
+    def _show_context_menu(self, event):
         self.file_menu.tk_popup(event.x_root, event.y_root)
         self.file_menu.grab_release()
 
+    # ------------------------------------------------------------------
+    # Cursor helper
+    # ------------------------------------------------------------------
+
+    def _apply_hand_cursor(self):
+        """Recursively set the hand cursor on every ttk.Button."""
+
+        def _walk(widget):
+            try:
+                if isinstance(widget, ttk.Button):
+                    widget.configure(cursor="hand2")
+            except TypeError:
+                pass
+            try:
+                for child in widget.winfo_children():
+                    _walk(child)
+            except tk.TclError:
+                pass
+
+        _walk(self.root)
+
+    # ------------------------------------------------------------------
+    # File I/O helpers
+    # ------------------------------------------------------------------
+
     def load_task_file(self):
-        """Load a hexadecimal file into the send_text widget"""
-        # Use the script path as initial directory
+        """Load a hex file into the transmit text box."""
         init_dir = os.path.dirname(os.path.abspath(__file__))
         file_path = tkFileDialog.askopenfilename(
             title="Select a file to load",
@@ -470,14 +489,12 @@ class GUdpMessenger:
             initialdir=init_dir,
         )
         if file_path:
-            with open(file_path, "r") as file:
-                content = file.read()
+            with open(file_path, "r") as fh:
                 self.send_text.delete("1.0", tk.END)
-                self.send_text.insert(tk.END, content)
+                self.send_text.insert(tk.END, fh.read())
 
     def save_task_file(self):
-        """Save the hexadecimal content of send_text widget to a file"""
-        # Use the script path as initial directory
+        """Save the transmit text box contents to a file."""
         init_dir = os.path.dirname(os.path.abspath(__file__))
         file_path = tkFileDialog.asksaveasfilename(
             title="Specify a file to save",
@@ -485,214 +502,30 @@ class GUdpMessenger:
             initialdir=init_dir,
         )
         if file_path:
-            with open(file_path, "w") as file:
-                content = self.send_text.get("1.0", tk.END)
-                file.write(content)
+            with open(file_path, "w") as fh:
+                fh.write(self.send_text.get("1.0", tk.END))
+
+    # ------------------------------------------------------------------
+    # Clear actions
+    # ------------------------------------------------------------------
 
     def clear_send(self):
-        """Clear send text box"""
         self.send_text.delete("1.0", tk.END)
 
     def clear_received(self):
-        """Clear received text box"""
         self.recv_text.delete("1.0", tk.END)
 
     def clear_sys_log(self):
-        """Clear system log text box"""
         self.sys_log.delete("1.0", tk.END)
 
-    def apply_hand_cursor_to_buttons(self):
-        """Apply hand cursor to all ttk buttons in the application"""
-        for widget in self.root.winfo_children():
-            self._set_cursor_recursive(widget)
-
-    def _set_cursor_recursive(self, widget):
-        """Recursively set hand cursor on all button widgets"""
-        try:
-            if isinstance(widget, ttk.Button):
-                widget.configure(cursor="hand2")
-        except TypeError:
-            pass
-
-        # Process children
-        try:
-            for child in widget.winfo_children():
-                self._set_cursor_recursive(child)
-        except tk.TclError:
-            # Handle specific error related to Tkinter widgets
-            pass
-
-    def validate_hex(self, data):
-        """Validate if string contains valid hex characters"""
-        # Remove spaces and newlines for validation
-        cleaned = data.replace(" ", "").replace("\n", "").replace("\r", "")
-        if not cleaned:
-            return False
-        return bool(re.match(r"^[0-9A-Fa-f]+$", cleaned))
-
-    def format_hex_output(self, data):
-        """Format bytes as hex string with spaces"""
-        return " ".join(f"{b:02X}" for b in data)
-
-    def format_ascii_output(self, data):
-        """Format bytes showing both hex and ASCII"""
-        hex_part = self.format_hex_output(data)
-        ascii_part = "".join(chr(b) if 32 <= b <= 126 else "." for b in data)
-        return f"{hex_part}  [{ascii_part}]"
-
-    def toggle_listening(self):
-        """Start or stop UDP listening"""
-        if not self.is_listening:
-            self.start_listening()
-        else:
-            self.stop_listening()
-
-    def start_listening(self):
-        """Start UDP listener"""
-        try:
-            local_ip = self.local_ip.get().strip()
-            local_port = int(self.local_port.get().strip())
-
-            # Create UDP socket
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            self.sock.bind((local_ip, local_port))
-            self.sock.settimeout(0.5)  # 0.5 second timeout
-
-            self.is_listening = True
-            self.bind_button.config(text="[ STOP ]")
-            self.status_label.config(text="● LISTENING", fg=self.colors["accent"])
-
-            # Start listening thread
-            self.listen_thread = threading.Thread(target=self.receive_data, daemon=True)
-            self.listen_thread.start()
-
-            self.log(f"Started listening on {local_ip}:{local_port}")
-
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to bind socket: {str(e)}")
-            self.log(f"Error: Failed to bind - {str(e)}")
-
-    def stop_listening(self):
-        """Stop UDP listener"""
-        self.is_listening = False
-
-        if self.sock:
-            try:
-                self.sock.close()
-            except OSError:
-                pass
-            self.sock = None
-
-        self.bind_button.config(text="[ START ]")
-        self.status_label.config(text="● DISCONNECTED", fg=self.colors["accent_red"])
-        self.log("Stopped listening")
-
-    def receive_data(self):
-        """Receive data in a separate thread"""
-        while self.is_listening:
-            try:
-                if self.sock:
-                    data, addr = self.sock.recvfrom(65535)
-
-                    # Update UI in main thread
-                    self.root.after(0, self.display_received_data, data, addr)
-
-            except socket.timeout:
-                continue
-            except Exception as e:
-                if self.is_listening:
-                    self.root.after(0, self.log, f"Error receiving data: {str(e)}")
-                break
-
-    def display_received_data(self, data, addr):
-        """Display received data in the receive text box"""
-        if self.show_ascii.get():
-            formatted_data = self.format_ascii_output(data)
-        else:
-            formatted_data = self.format_hex_output(data)
-
-        # Insert received data with styling
-        self.recv_text.insert(tk.END, f"From {addr[0]}:{addr[1]}:\n", "source")
-        self.recv_text.insert(tk.END, f"{formatted_data}\n\n", "data")
-        self.recv_text.see(tk.END)
-
-        # Configure tags for colored text
-        self.recv_text.tag_configure("source", foreground=self.colors["accent_yellow"])
-        self.recv_text.tag_configure("data", foreground=self.colors["accent_cyan"])
-
-        self.log(f"Received {len(data)} bytes from {addr[0]}:{addr[1]}")
-
-    def send_data(self):
-        """Send hex data to remote address"""
-        if not self.sock:
-            messagebox.showwarning(
-                "Warning", "Socket not bound. Please start listening first."
-            )
-            return
-
-        try:
-            # Get data from send text box
-            hex_string = self.send_text.get("1.0", tk.END).strip()
-
-            if not hex_string:
-                messagebox.showwarning(
-                    "Warning", "Please enter hexadecimal data to send."
-                )
-                return
-
-            # Validate hex
-            if not self.validate_hex(hex_string):
-                messagebox.showerror(
-                    "Error", "Invalid hexadecimal data. Use only 0-9, A-F characters."
-                )
-                return
-
-            # Remove spaces and convert to bytes
-            hex_string = hex_string.replace(" ", "").replace("\n", "").replace("\r", "")
-            data = bytes.fromhex(hex_string)
-
-            # Get remote address
-            remote_ip = self.remote_ip.get().strip()
-            remote_port = int(self.remote_port.get().strip())
-
-            # Send data
-            bytes_sent = self.sock.sendto(data, (remote_ip, remote_port))
-
-            # Log the sent data
-            if self.show_ascii.get():
-                sent_display = self.format_ascii_output(data)
-            else:
-                sent_display = self.format_hex_output(data)
-
-            self.log(
-                f"Sent {bytes_sent} bytes to {remote_ip}:{remote_port}: {sent_display}"
-            )
-
-        except ValueError as e:
-            messagebox.showerror("Error", f"Invalid hex data: {str(e)}")
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to send data: {str(e)}")
-            self.log(f"Error sending: {str(e)}")
-
-    def send_special(self, char):
-        """Send special characters (CR, LF)"""
-        # Insert the hex representation into the send box
-        hex_val = " ".join(f"{ord(c):02X}" for c in char)
-
-        current = self.send_text.get("1.0", tk.END).strip()
-        if current:
-            self.send_text.insert(tk.END, f" {hex_val}")
-        else:
-            self.send_text.insert(tk.END, hex_val)
+    # ------------------------------------------------------------------
+    # Logging
+    # ------------------------------------------------------------------
 
     def log(self, message):
-        """Add message to log with color coding"""
-        from datetime import datetime
-
+        """Append a colour-coded timestamped entry to the system log."""
         timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
 
-        # Color code different message types
         if "Error" in message or "Failed" in message:
             tag = "error"
         elif "Sent" in message:
@@ -710,60 +543,206 @@ class GUdpMessenger:
         self.sys_log.insert(tk.END, f"{message}\n", tag)
         self.sys_log.see(tk.END)
 
-        # Configure log tags
-        self.sys_log.tag_configure("timestamp", foreground=self.colors["text_dim"])
-        self.sys_log.tag_configure("error", foreground=self.colors["accent_red"])
-        self.sys_log.tag_configure("sent", foreground=self.colors["accent_orange"])
-        self.sys_log.tag_configure("received", foreground=self.colors["accent_cyan"])
-        self.sys_log.tag_configure("success", foreground=self.colors["accent"])
-        self.sys_log.tag_configure("warning", foreground=self.colors["accent_yellow"])
-        self.sys_log.tag_configure("info", foreground=self.colors["text"])
+        c = self.colors
+        self.sys_log.tag_configure("timestamp", foreground=c["text_dim"])
+        self.sys_log.tag_configure("error", foreground=c["accent_red"])
+        self.sys_log.tag_configure("sent", foreground=c["accent_orange"])
+        self.sys_log.tag_configure("received", foreground=c["accent_cyan"])
+        self.sys_log.tag_configure("success", foreground=c["accent"])
+        self.sys_log.tag_configure("warning", foreground=c["accent_yellow"])
+        self.sys_log.tag_configure("info", foreground=c["text"])
 
-    def get_config_path(self):
-        """Get the path to the configuration file"""
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        return os.path.join(script_dir, "gudp_messenger.json")
+    # ------------------------------------------------------------------
+    # UDP – listen / stop
+    # ------------------------------------------------------------------
 
-    def load_config(self):
-        """Load configuration from JSON file"""
-        config_path = self.get_config_path()
+    def toggle_listening(self):
+        if self.is_listening:
+            self.stop_listening()
+        else:
+            self.start_listening()
 
-        if not os.path.exists(config_path):
-            self.log("Config file not found, using defaults")
+    def start_listening(self):
+        try:
+            local_ip = self.local_ip.get().strip()
+            local_port = int(self.local_port.get().strip())
+
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.sock.bind((local_ip, local_port))
+            self.sock.settimeout(0.5)
+
+            self.is_listening = True
+            self.bind_button.config(text="[ STOP ]")
+            self.status_label.config(text="● LISTENING", fg=self.colors["accent"])
+
+            self.listen_thread = threading.Thread(
+                target=self._receive_loop, daemon=True
+            )
+            self.listen_thread.start()
+
+            self.log(f"Started listening on {local_ip}:{local_port}")
+
+        except Exception as exc:
+            messagebox.showerror("Error", f"Failed to bind socket: {exc}")
+            self.log(f"Error: Failed to bind - {exc}")
+
+    def stop_listening(self):
+        self.is_listening = False
+
+        if self.sock:
+            try:
+                self.sock.close()
+            except OSError:
+                pass
+            self.sock = None
+
+        self.bind_button.config(text="[ START ]")
+        self.status_label.config(text="● DISCONNECTED", fg=self.colors["accent_red"])
+        self.log("Stopped listening")
+
+    # ------------------------------------------------------------------
+    # UDP – receive loop (runs in background thread)
+    # ------------------------------------------------------------------
+
+    def _receive_loop(self):
+        while self.is_listening:
+            try:
+                if self.sock:
+                    data, addr = self.sock.recvfrom(65535)
+                    self.root.after(0, self._display_received, data, addr)
+            except socket.timeout:
+                continue
+            except Exception as exc:
+                if self.is_listening:
+                    self.root.after(0, self.log, f"Error receiving data: {exc}")
+                break
+
+    def _display_received(self, data, addr):
+        """Called on the main thread to render incoming data."""
+        formatted = (
+            self._format_ascii(data)
+            if self.show_ascii.get()
+            else self._format_hex(data)
+        )
+        self.recv_text.insert(tk.END, f"From {addr[0]}:{addr[1]}:\n", "source")
+        self.recv_text.insert(tk.END, f"{formatted}\n\n", "data")
+        self.recv_text.see(tk.END)
+
+        c = self.colors
+        self.recv_text.tag_configure("source", foreground=c["accent_yellow"])
+        self.recv_text.tag_configure("data", foreground=c["accent_cyan"])
+
+        self.log(f"Received {len(data)} bytes from {addr[0]}:{addr[1]}")
+
+    # ------------------------------------------------------------------
+    # UDP – send
+    # ------------------------------------------------------------------
+
+    def send_data(self):
+        if not self.sock:
+            messagebox.showwarning(
+                "Warning", "Socket not bound. Please start listening first."
+            )
             return
 
         try:
-            with open(config_path, "r") as f:
-                config = json.load(f)
+            hex_string = self.send_text.get("1.0", tk.END).strip()
 
-            connection = config.get("connection", {})
+            if not hex_string:
+                messagebox.showwarning(
+                    "Warning", "Please enter hexadecimal data to send."
+                )
+                return
 
-            local_ip = connection.get("local_ip", "0.0.0.0")
-            local_port = connection.get("local_port", 8888)
-            remote_ip = connection.get("remote_ip", "127.0.0.1")
-            remote_port = connection.get("remote_port", 9999)
+            if not self._validate_hex(hex_string):
+                messagebox.showerror(
+                    "Error", "Invalid hexadecimal data. Use only 0-9, A-F characters."
+                )
+                return
 
-            self.local_ip.delete(0, tk.END)
-            self.local_ip.insert(0, local_ip)
+            hex_clean = hex_string.replace(" ", "").replace("\n", "").replace("\r", "")
+            data = bytes.fromhex(hex_clean)
 
-            self.local_port.delete(0, tk.END)
-            self.local_port.insert(0, str(local_port))
+            remote_ip = self.remote_ip.get().strip()
+            remote_port = int(self.remote_port.get().strip())
 
-            self.remote_ip.delete(0, tk.END)
-            self.remote_ip.insert(0, remote_ip)
+            bytes_sent = self.sock.sendto(data, (remote_ip, remote_port))
+            sent_display = (
+                self._format_ascii(data)
+                if self.show_ascii.get()
+                else self._format_hex(data)
+            )
+            self.log(
+                f"Sent {bytes_sent} bytes to {remote_ip}:{remote_port}: {sent_display}"
+            )
 
-            self.remote_port.delete(0, tk.END)
-            self.remote_port.insert(0, str(remote_port))
+        except ValueError as exc:
+            messagebox.showerror("Error", f"Invalid hex data: {exc}")
+        except Exception as exc:
+            messagebox.showerror("Error", f"Failed to send data: {exc}")
+            self.log(f"Error sending: {exc}")
+
+    def send_special(self, char):
+        """Append the hex encoding of a special character to the TX box."""
+        hex_val = " ".join(f"{ord(c):02X}" for c in char)
+        current = self.send_text.get("1.0", tk.END).strip()
+        self.send_text.insert(tk.END, f" {hex_val}" if current else hex_val)
+
+    # ------------------------------------------------------------------
+    # Data formatting
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _format_hex(data):
+        return " ".join(f"{b:02X}" for b in data)
+
+    @staticmethod
+    def _format_ascii(data):
+        hex_part = " ".join(f"{b:02X}" for b in data)
+        ascii_part = "".join(chr(b) if 32 <= b <= 126 else "." for b in data)
+        return f"{hex_part}  [{ascii_part}]"
+
+    @staticmethod
+    def _validate_hex(data):
+        cleaned = data.replace(" ", "").replace("\n", "").replace("\r", "")
+        return bool(cleaned and re.match(r"^[0-9A-Fa-f]+$", cleaned))
+
+    # ------------------------------------------------------------------
+    # Configuration persistence
+    # ------------------------------------------------------------------
+
+    def _config_path(self):
+        return os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "gudp_messenger.json"
+        )
+
+    def load_config(self):
+        path = self._config_path()
+        if not os.path.exists(path):
+            self.log("Config file not found, using defaults")
+            return
+        try:
+            with open(path, "r") as fh:
+                config = json.load(fh)
+
+            conn = config.get("connection", {})
+            for widget, key, default in (
+                (self.local_ip, "local_ip", "0.0.0.0"),
+                (self.local_port, "local_port", "8888"),
+                (self.remote_ip, "remote_ip", "127.0.0.1"),
+                (self.remote_port, "remote_port", "9999"),
+            ):
+                widget.delete(0, tk.END)
+                widget.insert(0, str(conn.get(key, default)))
 
             self.log("Configuration loaded successfully")
 
-        except Exception as e:
-            self.log(f"Error loading config: {str(e)}, using defaults")
+        except Exception as exc:
+            self.log(f"Error loading config: {exc}, using defaults")
 
     def save_config(self):
-        """Save configuration to JSON file"""
-        config_path = self.get_config_path()
-
+        path = self._config_path()
         try:
             config = {
                 "connection": {
@@ -773,17 +752,18 @@ class GUdpMessenger:
                     "remote_port": int(self.remote_port.get().strip()),
                 }
             }
-
-            with open(config_path, "w") as f:
-                json.dump(config, f, indent=2)
-
+            with open(path, "w") as fh:
+                json.dump(config, fh, indent=2)
             self.log("Configuration saved successfully")
 
-        except Exception as e:
-            self.log(f"Error saving config: {str(e)}")
+        except Exception as exc:
+            self.log(f"Error saving config: {exc}")
+
+    # ------------------------------------------------------------------
+    # Shutdown
+    # ------------------------------------------------------------------
 
     def on_closing(self):
-        """Handle window closing"""
         self.save_config()
         self.stop_listening()
         self.root.destroy()
