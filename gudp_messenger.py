@@ -462,9 +462,12 @@ class GUdpMessenger:
 
     def load_task_file(self):
         """Load a hexadecimal file into the send_text widget"""
+        # Use the script path as initial directory
+        init_dir = os.path.dirname(os.path.abspath(__file__))
         file_path = tkFileDialog.askopenfilename(
             title="Select a file to load",
             filetypes=(("Text files", "*.txt"), ("All files", "*.*")),
+            initialdir=init_dir,
         )
         if file_path:
             with open(file_path, "r") as file:
@@ -474,9 +477,12 @@ class GUdpMessenger:
 
     def save_task_file(self):
         """Save the hexadecimal content of send_text widget to a file"""
+        # Use the script path as initial directory
+        init_dir = os.path.dirname(os.path.abspath(__file__))
         file_path = tkFileDialog.asksaveasfilename(
             title="Specify a file to save",
             filetypes=(("Text files", "*.txt"), ("All files", "*.*")),
+            initialdir=init_dir,
         )
         if file_path:
             with open(file_path, "w") as file:
