@@ -684,7 +684,7 @@ class GUdpMessenger:
         """Add message to log with color coding"""
         from datetime import datetime
 
-        timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-4]
+        timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
 
         # Color code different message types
         if "Error" in message or "Failed" in message:
