@@ -14,6 +14,8 @@ A simple UDP Hexadecimal Messenger Application for sending and receiving hexadec
 - **Cross-Platform**: Works on Linux, macOS, and Windows with adaptive font selection
 - **Configuration Persistence**: Automatically saves and restores connection settings
 
+![Figure 01](docs/images/Figure_01.png)
+
 ## Requirements
 
 - Python 3.6 or higher
