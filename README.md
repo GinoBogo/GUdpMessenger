@@ -16,6 +16,8 @@ A simple UDP Hexadecimal Messenger Application for sending and receiving hexadec
 
 ![Figure 01](docs/images/Figure_01.png)
 
+![Figure 02](docs/images/Figure_02.png)
+
 ## Requirements
 
 - Python 3.6 or higher
@@ -77,6 +79,7 @@ python gudp_messenger.py
 5. **Clear Panels**:
    - `[ CLEAR TX ]` clears the transmit panel
    - `[ CLEAR RX ]` clears the receive panel
+   - `[ CLEAR LOG ]` clears the system log panel
 
 6. **File Operations**:
    - Right-click in the transmit panel to open context menu
