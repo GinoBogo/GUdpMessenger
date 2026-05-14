@@ -265,8 +265,8 @@ class GUdpMessenger:
         control_frame = ttk.Frame(self.root, style="Dark.TFrame")
         control_frame.grid(row=1, column=0, columnspan=2, padx=10, pady=5, sticky="ew")
 
-        # Standard button width for all buttons
-        button_width = 12
+        # Standard button width for primary buttons
+        button_width = 13
 
         self.bind_button = ttk.Button(
             control_frame,
@@ -289,6 +289,14 @@ class GUdpMessenger:
             control_frame,
             text="[ CLEAR RX ]",
             command=self.clear_received,
+            width=button_width,
+            style="Dark.TButton",
+        ).pack(side=tk.LEFT, padx=(0, 5))
+
+        ttk.Button(
+            control_frame,
+            text="[ CLEAR LOG ]",
+            command=self.clear_sys_log,
             width=button_width,
             style="Dark.TButton",
         ).pack(side=tk.LEFT, padx=(0, 5))
@@ -342,6 +350,9 @@ class GUdpMessenger:
         # Send button frame
         send_btn_frame = ttk.Frame(send_frame, style="Dark.TFrame")
         send_btn_frame.grid(row=1, column=0, sticky="ew")
+
+        # Standard button width for secondary buttons
+        button_width = 12
 
         ttk.Button(
             send_btn_frame,
@@ -412,7 +423,7 @@ class GUdpMessenger:
             style="Dark.TCheckbutton",
         ).pack(side=tk.LEFT)
 
-        # Log Frame
+        # System Log Frame
         log_frame = ttk.LabelFrame(
             self.root, text="[ SYSTEM LOG ]", padding="10", style="Dark.TLabelframe"
         )
@@ -422,7 +433,7 @@ class GUdpMessenger:
         log_frame.grid_columnconfigure(0, weight=1)
         log_frame.grid_rowconfigure(0, weight=1)
 
-        self.log_text = scrolledtext.ScrolledText(
+        self.sys_log = scrolledtext.ScrolledText(
             log_frame,
             height=4,
             wrap=tk.WORD,
@@ -436,7 +447,7 @@ class GUdpMessenger:
             borderwidth=1,
             highlightthickness=0,
         )
-        self.log_text.grid(row=0, column=0, sticky="nsew")
+        self.sys_log.grid(row=0, column=0, sticky="nsew")
 
         # Log font info
         self.log(f"Using font: {self.fonts['selected']}")
@@ -479,6 +490,10 @@ class GUdpMessenger:
     def clear_received(self):
         """Clear received text box"""
         self.recv_text.delete("1.0", tk.END)
+
+    def clear_sys_log(self):
+        """Clear system log text box"""
+        self.sys_log.delete("1.0", tk.END)
 
     def apply_hand_cursor_to_buttons(self):
         """Apply hand cursor to all ttk buttons in the application"""
@@ -685,18 +700,18 @@ class GUdpMessenger:
         else:
             tag = "info"
 
-        self.log_text.insert(tk.END, f"[{timestamp}] ", "timestamp")
-        self.log_text.insert(tk.END, f"{message}\n", tag)
-        self.log_text.see(tk.END)
+        self.sys_log.insert(tk.END, f"[{timestamp}] ", "timestamp")
+        self.sys_log.insert(tk.END, f"{message}\n", tag)
+        self.sys_log.see(tk.END)
 
         # Configure log tags
-        self.log_text.tag_configure("timestamp", foreground=self.colors["text_dim"])
-        self.log_text.tag_configure("error", foreground=self.colors["accent_red"])
-        self.log_text.tag_configure("sent", foreground=self.colors["accent_orange"])
-        self.log_text.tag_configure("received", foreground=self.colors["accent_cyan"])
-        self.log_text.tag_configure("success", foreground=self.colors["accent"])
-        self.log_text.tag_configure("warning", foreground=self.colors["accent_yellow"])
-        self.log_text.tag_configure("info", foreground=self.colors["text"])
+        self.sys_log.tag_configure("timestamp", foreground=self.colors["text_dim"])
+        self.sys_log.tag_configure("error", foreground=self.colors["accent_red"])
+        self.sys_log.tag_configure("sent", foreground=self.colors["accent_orange"])
+        self.sys_log.tag_configure("received", foreground=self.colors["accent_cyan"])
+        self.sys_log.tag_configure("success", foreground=self.colors["accent"])
+        self.sys_log.tag_configure("warning", foreground=self.colors["accent_yellow"])
+        self.sys_log.tag_configure("info", foreground=self.colors["text"])
 
     def get_config_path(self):
         """Get the path to the configuration file"""
