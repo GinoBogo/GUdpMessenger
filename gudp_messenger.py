@@ -253,7 +253,6 @@ class GUdpMessenger:
         self._apply_hand_cursor()
 
     def _create_settings_frame(self):
-        c = self.colors
         frame = ttk.LabelFrame(
             self.root,
             text="[ CONNECTION SETTINGS ]",
