@@ -417,6 +417,9 @@ class GUdpMessenger:
         )
         self.recv_text.grid(row=0, column=0, sticky="nsew", pady=(0, 5))
 
+        self.recv_text.tag_configure("source", foreground=c["accent_yellow"])
+        self.recv_text.tag_configure("data", foreground=c["accent_cyan"])
+
         fmt_frame = ttk.Frame(frame, style="Dark.TFrame")
         fmt_frame.grid(row=1, column=0, sticky="ew")
 
@@ -628,10 +631,6 @@ class GUdpMessenger:
         self.recv_text.insert(tk.END, f"From {addr[0]}:{addr[1]}:\n", "source")
         self.recv_text.insert(tk.END, f"{formatted}\n\n", "data")
         self.recv_text.see(tk.END)
-
-        c = self.colors
-        self.recv_text.tag_configure("source", foreground=c["accent_yellow"])
-        self.recv_text.tag_configure("data", foreground=c["accent_cyan"])
 
         self.log(f"Received {len(data)} bytes from {addr[0]}:{addr[1]}")
 
