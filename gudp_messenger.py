@@ -447,6 +447,14 @@ class GUdpMessenger:
         )
         self.sys_log.grid(row=0, column=0, sticky="nsew")
 
+        self.sys_log.tag_configure("timestamp", foreground=c["text_dim"])
+        self.sys_log.tag_configure("error", foreground=c["accent_red"])
+        self.sys_log.tag_configure("sent", foreground=c["accent_orange"])
+        self.sys_log.tag_configure("received", foreground=c["accent_cyan"])
+        self.sys_log.tag_configure("success", foreground=c["accent"])
+        self.sys_log.tag_configure("warning", foreground=c["accent_yellow"])
+        self.sys_log.tag_configure("info", foreground=c["text"])
+
         self.log(f"Using font: {self.fonts['selected']}")
 
     # ------------------------------------------------------------------
@@ -544,15 +552,6 @@ class GUdpMessenger:
         self.sys_log.insert(tk.END, f"[{timestamp}] ", "timestamp")
         self.sys_log.insert(tk.END, f"{message}\n", tag)
         self.sys_log.see(tk.END)
-
-        c = self.colors
-        self.sys_log.tag_configure("timestamp", foreground=c["text_dim"])
-        self.sys_log.tag_configure("error", foreground=c["accent_red"])
-        self.sys_log.tag_configure("sent", foreground=c["accent_orange"])
-        self.sys_log.tag_configure("received", foreground=c["accent_cyan"])
-        self.sys_log.tag_configure("success", foreground=c["accent"])
-        self.sys_log.tag_configure("warning", foreground=c["accent_yellow"])
-        self.sys_log.tag_configure("info", foreground=c["text"])
 
     # ------------------------------------------------------------------
     # UDP – listen / stop
