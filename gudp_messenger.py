@@ -583,6 +583,7 @@ class GUdpMessenger:
             self.log(f"Started listening on {local_ip}:{local_port}")
 
         except Exception as exc:
+            self.stop_listening()
             messagebox.showerror("Error", f"Failed to bind socket: {exc}")
             self.log(f"Error: Failed to bind - {exc}")
 
