@@ -42,7 +42,7 @@ class GUdpMessenger:
             # Scrollbar palette
             "sb_thumb": "#30363d",  # draggable thumb
             "sb_trough": "#0a0a0f",  # groove (matches bg_dark)
-            "sb_active": "#60666d",  # thumb on hover
+            "sb_active": "#70767d",  # thumb on hover
         }
 
         # Select best available monospace font
