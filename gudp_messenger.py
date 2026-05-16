@@ -9,6 +9,7 @@ import platform
 import re
 import socket
 import threading
+
 import tkinter as tk
 import tkinter.filedialog as tkFileDialog
 import tkinter.font as tkfont
@@ -27,22 +28,21 @@ class GUdpMessenger:
 
         # Dark theme colors
         self.colors = {
-            "bg_dark": "#0a0a0f",
-            "bg_panel": "#0d1117",
-            "bg_input": "#161b22",
-            "border": "#30363d",
-            "text": "#c9d1d9",
-            "text_dim": "#8b949e",
-            "accent": "#00ff41",  # Matrix green
-            "accent_cyan": "#58a6ff",  # Terminal cyan
-            "accent_orange": "#f0883e",  # Warning orange
-            "accent_red": "#f85149",  # Error red
+            "bg_dark": "#0a0a0f",  # Black
+            "bg_panel": "#0d1117",  # Dark Gray
+            "bg_input": "#161b22",  # Darker Gray
+            "border": "#30363d",  # Dark Blue
+            "text": "#c9d1d9",  # Light Gray
+            "text_dim": "#8b949e",  # Dimmed Text
+            "accent": "#00ff41",  # Bright Green
+            "accent_cyan": "#58a6ff",  # Terminal Cyan
+            "accent_orange": "#f0883e",  # Warning Orange
+            "accent_red": "#f85149",  # Error Red
             "accent_yellow": "#e3b341",  # Yellow
-            "terminal_green": "#00cc33",
-            # Scrollbar palette
-            "sb_thumb": "#30363d",  # draggable thumb
-            "sb_trough": "#0a0a0f",  # groove (matches bg_dark)
-            "sb_active": "#70767d",  # thumb on hover
+            "terminal_green": "#00cc33",  # Terminal Green
+            "sb_thumb": "#30363d",  # Dark Blue (draggable thumb)
+            "sb_trough": "#0a0a0f",  # Black (groove - matches bg_dark)
+            "sb_active": "#70767d",  # Lighter Dark Blue (thumb on hover)
         }
 
         # Select best available monospace font
